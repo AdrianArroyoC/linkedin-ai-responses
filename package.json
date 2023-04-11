@@ -1,0 +1,69 @@
+{
+  "name": "linkedin-ai-responses",
+  "version": "1.0.0",
+  "description": "A Node.js project that uses node-cron to schedule web scraping tasks on LinkedIn, retrieve messages, and generate responses using ChatGPT",
+  "main": "index.js",
+  "engines": {
+    "npm": "9.5.0",
+    "node": "18.14.2"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "start:debug": "node --watch --inspect index.js",
+    "lint": "eslint \"{*.js,**/*.js}\"",
+    "lint:fix": "eslint --fix \"{*.js,**/*.js}\"",
+    "format": "prettier \"{*.{js,json,md},**/*.{js,json}}\"",
+    "format:write": "prettier --write \"{*.{js,json,md},**/*.{js,json}}\"",
+    "husky:config": "npx husky install && npx husky add .husky/pre-commit \"npx --no-install lint-staged\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AdrianArroyoC/linkedin-ai-responses.git"
+  },
+  "keywords": [
+    "linkedin",
+    "web-scrapping",
+    "puppeteer",
+    "node-cron",
+    "chatgpt",
+    "chatComletion",
+    "openai"
+  ],
+  "author": "Adrian Arroyo Ceja <adrianarroyoceja@gmail.com>",
+  "license": "MIT",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint . --fix",
+      "prettier --write ."
+    ],
+    "*.json": [
+      "prettier --write ."
+    ],
+    "*.md": [
+      "prettier --write ."
+    ]
+  },
+  "bugs": {
+    "url": "https://github.com/AdrianArroyoC/linkedin-ai-responses/issues"
+  },
+  "homepage": "https://github.com/AdrianArroyoC/linkedin-ai-responses#readme",
+  "devDependencies": {
+    "eslint": "^8.25.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.0.3",
+    "prettier": "^2.7.1"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "node-cron": "^3.0.2",
+    "openai": "^3.2.1"
+  }
+}
