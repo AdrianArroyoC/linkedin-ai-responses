@@ -1,13 +1,16 @@
 const express = require('express');
 const cron = require('node-cron');
 const config = require('./config');
+const LinkedInClass = require('./services/linkedIn.service');
 
 const app = express();
 const port = config.port || 3000;
 
 cron.schedule('* * * * *', () => {
   // eslint-disable-next-line no-console
-  console.log('Running a job at every minute');
+  console.log('Running cron job..');
+  const linkedIn = new LinkedInClass();
+  linkedIn.run();
 });
 
 app.get('/', (req, res) => {
