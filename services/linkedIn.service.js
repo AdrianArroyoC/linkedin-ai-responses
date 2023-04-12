@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 const { linkedIn, headless } = require('../config');
-const { getText } = require('../utils/puppeteer.util');
+const { getText, scroll } = require('../utils/puppeteer.util');
 const { chatCompletion } = require('../utils/chatCompletion.util');
 
 const { repository } = require('../package.json');
@@ -15,9 +15,7 @@ class LinkedInClass {
   }
 
   async getBrowser() {
-    const config = {
-      headless,
-    };
+    const config = { headless };
     const args = [];
     if (headless) {
       args.push('--no-sandbox');
@@ -57,33 +55,33 @@ class LinkedInClass {
   }
 
   async getUnreadConversations() {
-    // TODO: Review this method
-    await this.page.goto('https://www.linkedin.com/messaging/');
-    await this.page.waitForSelector(
-      '.msg-conversations-container__conversations-list',
-    );
+    // Scroll the list of conversations until the end
+    const scrollSelector = '.msg-conversations-container__conversations-list';
+    await scroll(this.page, scrollSelector);
+
     const conversations = await this.page.$$(
       '.msg-conversations-container__conversations-list .msg-conversation-listitem',
     );
-
     const unreadConversations = [];
     for (const conversation of conversations) {
       // Review if the conversation is unread
-      const isUnread = await conversation.$(
-        '.msg-conversation-card__new-messages',
-      );
+      const isUnread = await conversation.$('.notification-badge__count');
       if (isUnread) {
+        const url = await conversation.$eval(
+          '.msg-conversation-listitem__link',
+          (a) => a.href,
+        );
         const name = await getText(
           conversation,
-          '.msg-s-event-listitem__actor-name',
+          '.msg-conversation-listitem__participant-names',
         );
         const newMessages = await getText(
           conversation,
-          '.msg-conversation-card__new-messages',
+          '.notification-badge__count',
         );
         unreadConversations.push({
           name,
-          conversation,
+          url,
           numberOfNewMessages: parseInt(newMessages, 10),
         });
       }
@@ -92,62 +90,61 @@ class LinkedInClass {
   }
 
   async getConversationMessages(conversation) {
+    let { numberOfNewMessages, url } = conversation;
     const conversationMessages = [];
-    await conversation.click();
-    await this.page.waitForSelector('.msg-s-message-list__list');
+    await this.page.goto(url);
+    await this.page.waitForSelector('.msg-s-message-list-container');
     const messages = await this.page.$$(
-      '.msg-s-message-list__list .msg-s-event-listitem',
+      '.msg-s-message-list-container .msg-s-message-list__event',
     );
-    let { numberOfNewMessages: i } = conversation;
-    let j = 0;
-    for (; j < i; j++) {
-      const message = messages[j];
+    for (let i = 1; i <= numberOfNewMessages; i++) {
+      const message = messages[messages.length - i];
       const text = await getText(message, '.msg-s-event-listitem__body');
-      const time = await getText(message, '.msg-s-event-listitem__time');
-      const date = await getText(
-        message,
-        '.msg-s-event-listitem__time-heading',
-      );
-      conversationMessages.push({
-        time,
-        date,
-        text,
-      });
-      i -= 1;
+      const time = await getText(message, '.msg-s-message-group__timestamp');
+      const date = await getText(message, '.msg-s-message-list__time-heading');
+      conversationMessages.push({ time, date, text });
     }
     return conversationMessages;
   }
 
-  formatMessages(messages, name) {
-    let text = `${name} wrote the following messages:\n`;
+  getContent(messages, name) {
+    let content = `The user ${name} wrote the following messages:\n`;
     for (const message of messages) {
       const { time, date, text: messageText } = message;
-      text += `${date} at ${time}: ${messageText}\n`;
+      content += `${date} at ${time}: ${messageText}\n`;
     }
-    text +=
-      'Reply the conversation in the same language in the best way possible';
-    text +=
-      'Specify that you are an AI that helps answer unread messages on LinkedIn';
-    return text;
+    return content;
   }
 
   async answerUnreadConversations(conversations) {
     for (const conversation of conversations) {
-      const { name, conversation: conversationElement } = conversation;
-      const messages = await this.getConversationMessages(conversationElement);
+      const { name } = conversation;
+      const messages = await this.getConversationMessages(conversation);
       const content = this.getContent(messages, name);
       let answer = await chatCompletion(content);
-      answer += `\n\n${repository.url}`;
-      // await this.page.type('.msg-form__contenteditable', answer);
-      // await this.page.keyboard.press('Enter');
+      answer += `\n\nMessage generated using ChatGPT and web scrapping, more details: ${repository.url.replace(
+        'git+',
+        '',
+      )}`;
       console.log(answer);
+      await this.page.type('.msg-form__contenteditable > p', answer);
+      await this.page.click('.msg-form__send-button');
     }
   }
 
   async run() {
     await this.getBrowser();
     await this.login();
-    const unreadConversations = await this.getUnreadConversations();
+    await this.page.goto('https://www.linkedin.com/messaging/');
+    await this.page.waitForSelector(
+      '.msg-conversations-container__conversations-list',
+    );
+    // "Priority messages"
+    let unreadConversations = await this.getUnreadConversations();
+    await this.answerUnreadConversations(unreadConversations);
+    // "Other messages"
+    await this.page.click('.msg-focused-inbox-tabs .artdeco-tab:nth-child(2)');
+    unreadConversations = await this.getUnreadConversations();
     await this.answerUnreadConversations(unreadConversations);
     await this.browser.close();
   }
