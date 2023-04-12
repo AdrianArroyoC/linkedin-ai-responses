@@ -1,3 +1,7 @@
+/**
+ * @fileoverview LinkedInClass provides a service to automate LinkedIn message responses using web scraping and the ChatGPT API.
+ */
+
 /* eslint-disable no-console */
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -8,12 +12,20 @@ const { chatCompletion } = require('../utils/chatCompletion.util');
 
 const { repository } = require('../package.json');
 
+/**
+ * @class
+ * @classdesc A service to automate LinkedIn message responses using web scraping and the ChatGPT API.
+ */
 class LinkedInClass {
   constructor() {
     this.browser = null;
     this.page = null;
   }
 
+  /**
+   * Initialize a new browser instance with the specified configuration.
+   * @private
+   */
   async getBrowser() {
     const config = { headless };
     const args = [];
@@ -33,6 +45,10 @@ class LinkedInClass {
     this.browser = browser;
   }
 
+  /**
+   * Log in to LinkedIn with the provided email and password from configuration.
+   * @private
+   */
   async login() {
     const { email, password } = linkedIn;
     try {
@@ -54,6 +70,11 @@ class LinkedInClass {
     }
   }
 
+  /**
+   * Get unread conversations from the current LinkedIn page.
+   * @private
+   * @returns {Promise<Array>} An array of unread conversation objects.
+   */
   async getUnreadConversations() {
     // Scroll the list of conversations until the end
     const scrollSelector = '.msg-conversations-container__conversations-list';
@@ -89,6 +110,12 @@ class LinkedInClass {
     return unreadConversations;
   }
 
+  /**
+   * Get messages from a given conversation.
+   * @private
+   * @param {object} conversation - The conversation object containing the URL and number of new messages.
+   * @returns {Promise<Array>} An array of message objects.
+   */
   async getConversationMessages(conversation) {
     let { numberOfNewMessages, url } = conversation;
     const conversationMessages = [];
@@ -107,6 +134,13 @@ class LinkedInClass {
     return conversationMessages;
   }
 
+  /**
+   * Format the conversation messages into a string.
+   * @private
+   * @param {Array} messages - An array of message objects.
+   * @param {string} name - The name of the conversation participant.
+   * @returns {string} A formatted string of conversation messages.
+   */
   getContent(messages, name) {
     let content = `The user ${name} wrote the following messages:\n`;
     for (const message of messages) {
@@ -116,6 +150,11 @@ class LinkedInClass {
     return content;
   }
 
+  /**
+   * Respond to unread conversations using the ChatGPT API.
+   * @private
+   * @param {Array} conversations - An array of unread conversation objects.
+   */
   async answerUnreadConversations(conversations) {
     for (const conversation of conversations) {
       const { name } = conversation;
@@ -132,6 +171,9 @@ class LinkedInClass {
     }
   }
 
+  /**
+   * Run the LinkedInClass service to log in, get unread messages, and respond using the ChatGPT API.
+   */
   async run() {
     await this.getBrowser();
     await this.login();

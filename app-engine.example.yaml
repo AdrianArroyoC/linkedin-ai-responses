@@ -1,0 +1,41 @@
+# App Engine Configuration for a Node.js Application
+
+# The environment must be set to `flex` to specify that the application should be deployed in the App Engine Flexible Environment.
+env: flex
+# The runtime must be set to `custom` because the application uses a custom runtime provided through a Dockerfile.
+runtime: custom
+# The service name. By default, if the name is not specified it will use the 'default' service.
+service:
+
+# Resources
+# This section defines the resources allocated to each instance of the application.
+# `cpu`: The number of CPU cores per instance.
+# `memory_gb`: The amount of memory (RAM) per instance in gigabytes.
+# `disk_size_gb`: The amount of disk space per instance in gigabytes.
+resources:
+  cpu:
+  memory_gb:
+  disk_size_gb:
+
+# Automatic Scaling
+# This section configures the automatic scaling settings for the application.
+# `max_num_instances`: The maximum number of instances that the application can scale to.
+automatic_scaling:
+  max_num_instances:
+
+# Handlers
+# This section defines the URL handlers for the application.
+# `url`: The URL pattern to match (.* matches all URLs).
+# `script`: The script to run for the matched URL pattern (`auto` delegates to the runtime to handle the request).
+handlers:
+  - url: .*
+    script: auto
+
+# The network configuration is left empty, which means that the default network settings will be used.
+network: {}
+
+# Environment Variables
+# This section defines the environment variables for the application.
+# `NODE_ENV`: The Node.js environment variable.
+env_variables:
+  NODE_ENV:
