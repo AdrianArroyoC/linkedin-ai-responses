@@ -82,6 +82,16 @@ env_variables:
 
 Make sure to create the corresponding .env.production file with the required environment variables.
 
+#### Considerations
+
+The environment variables `CHAT_COMPLETION_SYSTEM_CONTENT` and `CHAT_COMPLETION_USER_CONTENT` are crucial because they determine how the response will work. Some examples of usage that I used are:
+
+- `CHAT_COMPLETION_SYSTEM_CONTENT`="You are an assistant that helps answer unread messages on LinkedIn."
+
+- `CHAT_COMPLETION_USER_CONTENT`="Reply to the conversation in the same language as the user's messages and in the best way possible. If the message is for a job offer or an invitation to a course, say that you are not currently available or interested but appreciate it. If not, reply politely. Also, depending on how long ago the messages were sent, apologize for the delay."
+
+For more information on how to use the first variable, please visit https://platform.openai.com/docs/guides/chat. For the second variable, keep in mind that it is a complement to: "The user \<username\> wrote the following messages: \<list of all the messages with date and time\>"
+
 ### Deployment Steps
 
 1. Update the app.yaml file with the appropriate environment variables and configurations based on your requirements and the desired environment.
@@ -96,13 +106,24 @@ Make sure to create the corresponding .env.production file with the required env
 
 This command will deploy your application using the configurations specified in the app.yaml file. It might take some time for the deployment to complete.
 
-4. Once the deployment is successful, you can view your application by visiting the URL displayed in the terminal or by running the following command:
+4. Once the deployment is successful, you can view your application by visiting the URL displayed in the terminal and you must see this 'server running..." or you can run the following command:
 
    ```bash
    gcloud app browse
    ```
 
 This command will open the default web browser and navigate to the deployed application.
+
+## Next Steps
+
+This application was built to address a specific problem: the large number of unanswered messages I had on LinkedIn. I would like to apologize to everyone I left without a response for a considerable amount of time. To tackle this issue, I decided to create a quick solution to assist me. As the development was done in a short timeframe, I didn't add all the features I had in mind. In the future (perhaps distant), I hope to add the following features:
+
+- A functionality to not only reply to invitation messages but also to accept and decline them
+
+- Improve responses by not only using new messages but taking the entire conversation into account, and creating an initial prompt that provides better responses with more context
+
+- Add database connectivity to continuously reuse this application, use this database to identify previous chats and responses, and generate more accurate prompts for application responses after the first one
+- Extend the functionality of responses, for example, if the prompt for the user content states something like "If the messages indicate something about a remote Node.js position, then add the phrase "I"m interested" at the beginning of the message and respond appropriately afterward...", and in the code, set a regex that, if it finds "I"m interested", triggers the sending of additional message content or an email.
 
 ## License
 

@@ -22,8 +22,10 @@ cron.schedule(config.cron, () => {
 
 /**
  * Handles HTTP GET requests to the root path and returns a plain text response.
- * @param {object} req - The request object.
- * @param {object} res - The response object.
+ * @name Main route
+ * @path {GET} /
+ * @response {string} Server running...
+ * @code {200} Success
  */
 app.get('/', (req, res) => {
   res.send('Server running...');
