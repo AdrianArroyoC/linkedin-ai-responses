@@ -6,7 +6,7 @@
  * Extract the innerText of an element using a given selector.
  * @param {object} element - The Puppeteer element handle.
  * @param {string} selector - The CSS selector to find the target element.
- * @returns {Promise<string>} The innerText of the target element.
+ * @returns {string} The innerText of the target element.
  * @throws {Error} If an error occurs during the operation.
  */
 async function getText(element, selector) {
@@ -17,8 +17,6 @@ async function getText(element, selector) {
  * Scroll an element in a Puppeteer page to the end using a given selector.
  * @param {object} page - The Puppeteer page object.
  * @param {string} selector - The CSS selector to find the target element.
- * @returns {Promise<void>} A promise that resolves when the scrolling is complete.
- * @throws {Error} If an error occurs during the operation.
  */
 async function scroll(page, selector) {
   await page.evaluate(async (selector) => {

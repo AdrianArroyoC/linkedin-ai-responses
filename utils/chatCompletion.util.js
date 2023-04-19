@@ -12,10 +12,12 @@ const openai = new OpenAIApi(configuration);
 /**
  * Generate a response using the OpenAI chat completion API.
  * @param {string} content - The input content for the API.
- * @returns {Promise<string>} The generated response from the API.
- * @throws {Error} If an error occurs during the API call.
+ * @returns {string} The generated response from the API.
  */
 async function chatCompletion(content) {
+  const dateTimeContent = `Depending on how long ago the messages were sent, apologize for the delay, consider that current date is ${new Date()}.`;
+  const languageCodeContent =
+    'Add to the end the ISO 639-1 of the language you use in the completion inside brackets, i.e. [en] for English.';
   try {
     const messages = [
       {
@@ -24,7 +26,7 @@ async function chatCompletion(content) {
       },
       {
         role: 'user',
-        content: `${userContent}${content}`,
+        content: `${userContent}${dateTimeContent}${content}${languageCodeContent}`,
       },
     ];
     const response = await openai.createChatCompletion({

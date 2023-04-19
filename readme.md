@@ -88,7 +88,7 @@ The environment variables `CHAT_COMPLETION_SYSTEM_CONTENT` and `CHAT_COMPLETION_
 
 - `CHAT_COMPLETION_SYSTEM_CONTENT`="You are an assistant that helps answer unread messages on LinkedIn."
 
-- `CHAT_COMPLETION_USER_CONTENT`="Reply to the conversation in the same language as the user's messages and in the best way possible. If the message is for a job offer or an invitation to a course, say that you are not currently available or interested but appreciate it. If not, reply politely. Also, depending on how long ago the messages were sent, apologize for the delay."
+- `CHAT_COMPLETION_USER_CONTENT`="Reply the conversation in the same language of the messages by the user and in the best and short way possible without adding sender. If the message is for a job offer or and invitation to a course say that you are not currently available or interested but you apretiate it, if not reply just in a polite way."
 
 For more information on how to use the first variable, please visit https://platform.openai.com/docs/guides/chat. For the second variable, keep in mind that it is a complement to: "The user \<username\> wrote the following messages: \<list of all the messages with date and time\>"
 
@@ -123,7 +123,12 @@ This application was built to address a specific problem: the large number of un
 - Improve responses by not only using new messages but taking the entire conversation into account, and creating an initial prompt that provides better responses with more context
 
 - Add database connectivity to continuously reuse this application, use this database to identify previous chats and responses, and generate more accurate prompts for application responses after the first one
+
 - Extend the functionality of responses, for example, if the prompt for the user content states something like "If the messages indicate something about a remote Node.js position, then add the phrase "I"m interested" at the beginning of the message and respond appropriately afterward...", and in the code, set a regex that, if it finds "I"m interested", triggers the sending of additional message content or an email.
+
+- Implement Unit tests
+
+-
 
 ## License
 

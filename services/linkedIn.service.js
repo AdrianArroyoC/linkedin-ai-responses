@@ -2,7 +2,6 @@
  * @fileoverview LinkedInClass provides a service to automate LinkedIn message responses using web scraping and the ChatGPT API.
  */
 
-/* eslint-disable no-console */
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
@@ -65,17 +64,84 @@ class LinkedInClass {
         throw new Error('Login failed');
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(error.message);
       await this.browser.close();
     }
   }
 
   /**
+   * Review the first conversation to see if the last message is from the user.
+   * @private
+   * @returns {Array} An array of conversation objects.
+   */
+  async addFirstConversation() {
+    const conversation = await this.page.$(
+      '.msg-conversations-container__conversations-list .msg-conversation-listitem',
+    );
+    const name = await getText(
+      conversation,
+      '.msg-conversation-listitem__participant-names',
+    );
+    const messages = await this.page.$$(
+      '.msg-s-message-list-container .msg-s-message-list__event',
+    );
+    const message = messages.at(-1);
+    const lastMessageName = await getText(
+      message,
+      '.msg-s-message-group__profile-link',
+    );
+    return lastMessageName.startsWith(name);
+  }
+
+  /**
+   * Get the conversation data from a given conversation.
+   * @private
+   * @param {object} conversation - The conversation object.
+   * @returns {object} An object containing the conversation data.
+   */
+  async getConversationData(conversation, firstConversation = false) {
+    // Error Here
+    const url = await conversation.$eval(
+      '.msg-conversation-listitem__link',
+      (a) => a.href,
+    );
+    const name = await getText(
+      conversation,
+      '.msg-conversation-listitem__participant-names',
+    );
+    let newMessages = 1;
+    if (!firstConversation) {
+      newMessages = await getText(conversation, '.notification-badge__count');
+    }
+    return {
+      name,
+      url,
+      numberOfNewMessages: parseInt(newMessages, 10),
+    };
+  }
+
+  /**
    * Get unread conversations from the current LinkedIn page.
    * @private
-   * @returns {Promise<Array>} An array of unread conversation objects.
+   * @param {boolean} firstConversation - Look for the first conversation.
+   * @returns {Array} An array of unread conversation objects.
    */
-  async getUnreadConversations() {
+  async getUnreadConversations(firstConversation = true) {
+    const unreadConversations = [];
+    if (firstConversation) {
+      const firstConversation = await this.addFirstConversation();
+      if (firstConversation) {
+        const { name, url, numberOfNewMessages } =
+          await this.getConversationData(firstConversation, true);
+        unreadConversations.push({
+          name,
+          url,
+          numberOfNewMessages,
+        });
+      }
+    }
+
     // Scroll the list of conversations until the end
     const scrollSelector = '.msg-conversations-container__conversations-list';
     await scroll(this.page, scrollSelector);
@@ -83,27 +149,15 @@ class LinkedInClass {
     const conversations = await this.page.$$(
       '.msg-conversations-container__conversations-list .msg-conversation-listitem',
     );
-    const unreadConversations = [];
     for (const conversation of conversations) {
-      // Review if the conversation is unread
       const isUnread = await conversation.$('.notification-badge__count');
       if (isUnread) {
-        const url = await conversation.$eval(
-          '.msg-conversation-listitem__link',
-          (a) => a.href,
-        );
-        const name = await getText(
-          conversation,
-          '.msg-conversation-listitem__participant-names',
-        );
-        const newMessages = await getText(
-          conversation,
-          '.notification-badge__count',
-        );
+        const { name, url, numberOfNewMessages } =
+          await this.getConversationData(conversation);
         unreadConversations.push({
           name,
           url,
-          numberOfNewMessages: parseInt(newMessages, 10),
+          numberOfNewMessages,
         });
       }
     }
@@ -114,21 +168,34 @@ class LinkedInClass {
    * Get messages from a given conversation.
    * @private
    * @param {object} conversation - The conversation object containing the URL and number of new messages.
-   * @returns {Promise<Array>} An array of message objects.
+   * @returns {Array} An array of message objects.
    */
   async getConversationMessages(conversation) {
-    let { numberOfNewMessages, url } = conversation;
+    const { numberOfNewMessages } = conversation;
     const conversationMessages = [];
-    await this.page.goto(url);
-    await this.page.waitForSelector('.msg-s-message-list-container');
     const messages = await this.page.$$(
       '.msg-s-message-list-container .msg-s-message-list__event',
     );
     for (let i = 1; i <= numberOfNewMessages; i++) {
       const message = messages[messages.length - i];
       const text = await getText(message, '.msg-s-event-listitem__body');
-      const time = await getText(message, '.msg-s-message-group__timestamp');
-      const date = await getText(message, '.msg-s-message-list__time-heading');
+      const timeSelector = '.msg-s-event-listitem__timestamp';
+      const timeElement = await message.$(timeSelector);
+      // Get just the time from the timestamp
+      const currentDate = new Date();
+      const hours = currentDate.getHours();
+      const minutes = currentDate.getMinutes();
+      let time = `${hours}:${minutes}`;
+      if (timeElement) {
+        time = await getText(message, '.msg-s-message-group__timestamp');
+      }
+      const dateSelector = '.msg-s-message-list__time-heading';
+      const dateElement = await message.$(dateSelector);
+      let date = 'TODAY';
+      if (dateElement) {
+        date = await getText(message, dateSelector);
+        conversationMessages.push({ time, date, text });
+      }
       conversationMessages.push({ time, date, text });
     }
     return conversationMessages;
@@ -151,23 +218,44 @@ class LinkedInClass {
   }
 
   /**
-   * Respond to unread conversations using the ChatGPT API.
+   * Go to each unread conversation and respond it if possible using AI.
    * @private
    * @param {Array} conversations - An array of unread conversation objects.
    */
   async answerUnreadConversations(conversations) {
     for (const conversation of conversations) {
-      const { name } = conversation;
-      const messages = await this.getConversationMessages(conversation);
-      const content = this.getContent(messages, name);
-      let answer = await chatCompletion(content);
-      answer += `\n\nMessage generated using ChatGPT and web scrapping, more details: ${repository.url.replace(
-        'git+',
-        '',
-      )}`;
-      console.log(answer);
-      await this.page.type('.msg-form__contenteditable > p', answer);
-      await this.page.click('.msg-form__send-button');
+      const { url } = conversation;
+      await this.page.goto(url);
+      await this.page.waitForSelector('.msg-s-message-list-container');
+      const textBox = await this.page.$('.msg-form__contenteditable > p');
+      if (textBox) {
+        const { name } = conversation;
+        const messages = await this.getConversationMessages(conversation);
+        const content = this.getContent(messages, name);
+        await textBox.click();
+        await this.answerConversation(content);
+      }
+    }
+  }
+
+  /**
+   * Answer a conversation with a message generated using AI.
+   * @param {string} content - The message content that will be used to generate the response.
+   */
+  async answerConversation(content) {
+    let answer = await chatCompletion(content);
+    answer = answer
+      .replace(/\[en\]/g, 'Auto generated message using AI, more details: ')
+      .replace(/\[es\]/g, 'Mensaje auto generado usando IA, mas detalles: ');
+    const repositoryUrl = repository.url.replace('git+', '');
+    answer += `${repositoryUrl}`;
+    await this.page.type('.msg-form__contenteditable > p', answer);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await this.page.click('.msg-form__send-button');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const modalCloseButton = await this.page.$('.artdeco-modal__dismiss');
+    if (modalCloseButton) {
+      await modalCloseButton.click();
     }
   }
 
@@ -186,7 +274,7 @@ class LinkedInClass {
     await this.answerUnreadConversations(unreadConversations);
     // "Other messages"
     await this.page.click('.msg-focused-inbox-tabs .artdeco-tab:nth-child(2)');
-    unreadConversations = await this.getUnreadConversations();
+    unreadConversations = await this.getUnreadConversations(false);
     await this.answerUnreadConversations(unreadConversations);
     await this.browser.close();
   }
